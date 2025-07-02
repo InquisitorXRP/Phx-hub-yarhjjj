@@ -1,0 +1,288 @@
+-- Espera o jogo carregar
+repeat task.wait() until game:IsLoaded()
+
+-- Serviços necessários
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Cria o GUI principal
+local gui = Instance.new("ScreenGui")
+gui.Name = "PHX_Interface"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+-- Botão preto no canto superior esquerdo
+local mainButton = Instance.new("TextButton")
+mainButton.Size = UDim2.new(0, 60, 0, 60)
+mainButton.Position = UDim2.new(0, 10, 0, 10)
+mainButton.BackgroundColor3 = Color3.new(0, 0, 0)
+mainButton.Text = ""
+mainButton.Parent = gui
+
+-- Cantos arredondados do botão
+local cornerBtn = Instance.new("UICorner", mainButton)
+cornerBtn.CornerRadius = UDim.new(0, 12)
+
+-- Aba preta que expande para baixo
+local menuFrame = Instance.new("Frame")
+menuFrame.Size = UDim2.new(0, 500, 0, 0) -- Começa fechada (altura 0)
+menuFrame.Position = UDim2.new(0, 10, 0, 80) -- Embaixo do botão
+menuFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+menuFrame.Visible = false
+menuFrame.ClipsDescendants = true
+menuFrame.Parent = gui
+
+local cornerFrame = Instance.new("UICorner", menuFrame)
+cornerFrame.CornerRadius = UDim.new(0, 14)
+
+-- Abrir e fechar com expansão vertical
+local expanded = false
+
+mainButton.MouseButton1Click:Connect(function()
+	expanded = not expanded
+	menuFrame.Visible = true
+
+	if expanded then
+		menuFrame:TweenSize(UDim2.new(0, 500, 0, 250), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.3, true)
+	else
+		menuFrame:TweenSize(UDim2.new(0, 500, 0, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.3, true)
+	end
+end)
+-- Botão Speed
+local buttonSpeed = Instance.new("TextButton")
+buttonSpeed.Size = UDim2.new(0, 140, 0, 40)
+buttonSpeed.Position = UDim2.new(0, 20, 0, 20)
+buttonSpeed.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+buttonSpeed.TextColor3 = Color3.new(1, 1, 1)
+buttonSpeed.Text = "Speed"
+buttonSpeed.Font = Enum.Font.GothamBold
+buttonSpeed.TextSize = 16
+buttonSpeed.Parent = menuFrame
+Instance.new("UICorner", buttonSpeed)
+
+-- Botão ESP
+local buttonESP = Instance.new("TextButton")
+buttonESP.Size = UDim2.new(0, 140, 0, 40)
+buttonESP.Position = UDim2.new(0, 180, 0, 20)
+buttonESP.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+buttonESP.TextColor3 = Color3.new(1, 1, 1)
+buttonESP.Text = "ESP"
+buttonESP.Font = Enum.Font.GothamBold
+buttonESP.TextSize = 16
+buttonESP.Parent = menuFrame
+Instance.new("UICorner", buttonESP)
+
+-- Botão Bypass
+local buttonBypass = Instance.new("TextButton")
+buttonBypass.Size = UDim2.new(0, 140, 0, 40)
+buttonBypass.Position = UDim2.new(0, 340, 0, 20)
+buttonBypass.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+buttonBypass.TextColor3 = Color3.new(1, 1, 1)
+buttonBypass.Text = "Bypass"
+buttonBypass.Font = Enum.Font.GothamBold
+buttonBypass.TextSize = 16
+buttonBypass.Parent = menuFrame
+Instance.new("UICorner", buttonBypass)
+local speedOn = false
+
+buttonSpeed.MouseButton1Click:Connect(function()
+    speedOn = not speedOn
+
+    if speedOn then
+        buttonSpeed.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Verde
+    else
+        buttonSpeed.BackgroundColor3 = Color3.fromRGB(50, 0, 0) -- Vermelho escuro (original)
+        LocalPlayer.Character.Humanoid.WalkSpeed = 16 -- volta ao normal
+    end
+end)
+
+-- Loop para manter velocidade em 40 se estiver ativado
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if speedOn and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = 40
+        end
+    end
+end)
+-- Parte 4: Função do botão ESP
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+local espEnabled = false
+local espLines = {}
+local espNames = {}
+local espHighlights = {}
+
+-- Função rainbow suave
+local hue = 0
+local function getRainbowColor()
+    hue = (hue + 1) % 360
+    local c = Color3.fromHSV(hue / 360, 1, 1)
+    return c
+end
+
+local function createESP(player)
+    if player == LocalPlayer then return end
+    local character = player.Character or player.CharacterAdded:Wait()
+    local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+    local head = character:WaitForChild("Head", 5)
+    if not rootPart or not head then return end
+
+    -- Linha ESP
+    local line = Drawing.new("Line")
+    line.Thickness = 1.5
+    line.Transparency = 1
+    line.Visible = false
+    espLines[player] = line
+
+    -- Nome ESP
+    local nameText = Drawing.new("Text")
+    nameText.Size = 14
+    nameText.Center = true
+    nameText.Outline = true
+    nameText.Font = 2
+    nameText.Visible = false
+    espNames[player] = nameText
+
+    -- Highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Adornee = character
+    highlight.FillTransparency = 0.6
+    highlight.OutlineTransparency = 0.4
+    highlight.Enabled = false
+    highlight.Parent = game:GetService("CoreGui")
+    espHighlights[player] = highlight
+end
+
+local function removeESP(player)
+    if espLines[player] then
+        espLines[player]:Remove()
+        espLines[player] = nil
+    end
+    if espNames[player] then
+        espNames[player]:Remove()
+        espNames[player] = nil
+    end
+    if espHighlights[player] then
+        espHighlights[player]:Destroy()
+        espHighlights[player] = nil
+    end
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+    createESP(player)
+end
+
+Players.PlayerAdded:Connect(createESP)
+Players.PlayerRemoving:Connect(removeESP)
+
+RunService.RenderStepped:Connect(function()
+    if espEnabled then
+        for player, line in pairs(espLines) do
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local pos, onscreen = Camera:WorldToViewportPoint(character.HumanoidRootPart.Position)
+                if onscreen then
+                    line.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+                    line.To = Vector2.new(pos.X, pos.Y)
+                    line.Color = getRainbowColor()
+                    line.Visible = true
+                else
+                    line.Visible = false
+                end
+            else
+                line.Visible = false
+            end
+        end
+
+        for player, text in pairs(espNames) do
+            local character = player.Character
+            if character and character:FindFirstChild("Head") then
+                local pos, onscreen = Camera:WorldToViewportPoint(character.Head.Position + Vector3.new(0, 1.5, 0))
+                if onscreen then
+                    text.Position = Vector2.new(pos.X, pos.Y)
+                    text.Text = player.Name
+                    text.Color = getRainbowColor()
+                    text.Visible = true
+                else
+                    text.Visible = false
+                end
+            else
+                text.Visible = false
+            end
+        end
+
+        for player, h in pairs(espHighlights) do
+            h.Enabled = true
+            h.FillColor = getRainbowColor()
+            h.OutlineColor = getRainbowColor()
+        end
+    else
+        for _, obj in pairs(espLines) do obj.Visible = false end
+        for _, obj in pairs(espNames) do obj.Visible = false end
+        for _, obj in pairs(espHighlights) do obj.Enabled = false end
+    end
+end)
+
+-- Botão ESP
+local espOn = false
+buttonESP.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    espOn = not espOn
+    buttonESP.BackgroundColor3 = espOn and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(30, 30, 30)
+end)
+-- Parte 5: Função do botão Bypass
+local bypassOn = false
+
+local function BypassKickAndDetections()
+    -- Remover tentativas de kick por scripts locais
+    local mt = getrawmetatable(game)
+    setreadonly(mt, false)
+
+    local oldNamecall = mt.__namecall
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        if tostring(method) == "Kick" or tostring(self) == "Kick" then
+            return warn("Tentativa de Kick bloqueada!")
+        end
+        return oldNamecall(self, ...)
+    end)
+
+    -- Também evita kicks diretos
+    LocalPlayer.Kick = function() return nil end
+
+    -- Desativa LocalScripts suspeitos
+    for _, v in pairs(game:GetDescendants()) do
+        if v:IsA("LocalScript") and not v.Enabled then
+            continue
+        end
+        local source = v:GetFullName():lower()
+        if source:find("anti") or source:find("detect") or source:find("kick") then
+            v.Disabled = true
+        end
+    end
+
+    -- Proteção contra RemoteEvents de detecção
+    for _, obj in pairs(game:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            obj:Destroy()
+        end
+    end
+
+    -- Mais camadas de proteção podem ser adicionadas aqui
+end
+
+-- Clique do botão Bypass
+buttonBypass.MouseButton1Click:Connect(function()
+    bypassOn = not bypassOn
+    if bypassOn then
+        BypassKickAndDetections()
+        buttonBypass.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        buttonBypass.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    end
+end)
